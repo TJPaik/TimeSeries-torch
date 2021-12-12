@@ -55,7 +55,6 @@ class MedianFilter1D(nn.Module):
         return median_unfolded
 
 
-# %%
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from scipy.signal import medfilt
