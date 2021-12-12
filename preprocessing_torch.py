@@ -14,6 +14,7 @@ class GaussianFilter1D(nn.Module):
             self.conv.weight = nn.Parameter(
                 weight[None, None, :]
             )
+            self.conv.requires_grad_(False)
         else:
             raise NotImplementedError()
 
@@ -55,11 +56,31 @@ class MedianFilter1D(nn.Module):
         return median_unfolded
 
 
+class EcgPreprocess(nn.Module):
+    '''
+    reference :
+    Advances in Cardiac Signal Processing
+    Book by Rajendra Acharya U
+    '''
+
+    def __init__(self):
+        super(EcgPreprocess, self).__init__()
+
+        self.MF1 = MedianFilter1D(101)
+        self.MF2 = MedianFilter1D(301)
+
+    def forward(self, x):
+        y = self.MF2(self.MF1(x))
+        return x - y
+
+
 if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    from scipy.signal import medfilt
     import numpy as np
+    import matplotlib.pyplot as plt
+
+    from scipy.signal import medfilt
     from scipy.ndimage import gaussian_filter1d
+    from scipy.misc import electrocardiogram
 
     dummy_input = torch.rand(3, 6, 21)
     SIGMA = 2
@@ -83,6 +104,23 @@ if __name__ == '__main__':
 
     plt.plot(output[1, 4].detach(), label='torch version')
     plt.plot(original_output[1, 4], label='original')
-    plt.title('Median test')
+    plt.title('Median Filter test')
+    plt.legend()
+    plt.show()
+
+    x = np.asarray([[
+        electrocardiogram()[2000:4000],
+        electrocardiogram()[6000:8000],
+        electrocardiogram()[8000:10000]
+    ], [
+        electrocardiogram()[12000:14000],
+        electrocardiogram()[16000:18000],
+        electrocardiogram()[18000:20000]
+    ]])
+    EP = EcgPreprocess()
+    x_preprocessed = EP(torch.as_tensor(x))
+
+    plt.plot(x[0, 0], label='original')
+    plt.plot(x_preprocessed[0, 0], label='debased')
     plt.legend()
     plt.show()
