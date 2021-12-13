@@ -1,4 +1,4 @@
-from torch.fft import rfft
+from torch.fft import rfft, irfft
 import torch
 
 
@@ -26,6 +26,23 @@ def idct(x, type=2):
     if type == 1:
         return dct(x, type=type) / (2 * (x.shape[2] - 1))
     elif type == 2:
-        raise NotImplementedError()
+        w_length = x.shape[2]
+        x = torch.cat((
+            x,
+            torch.zeros(*x.shape[:2], 1),
+            -torch.flip(x, (2,))
+        ), 2)
+        return irfft(x)[..., 1::2][..., :w_length]
     else:
         raise NotImplementedError()
+
+
+if __name__ == '__main__':
+    dummy_waves = torch.rand(3, 5, 1024)
+    recon1 = idct(dct(dummy_waves, type=1), type=1)
+    recon2 = idct(dct(dummy_waves, type=2), type=2)
+    print('error :',
+          max(
+              torch.max(torch.abs(recon1 - dummy_waves)),
+              torch.max(torch.abs(recon2 - dummy_waves))
+          ))
