@@ -4,6 +4,7 @@ from scipy.ndimage import gaussian_filter1d
 
 
 def find_r(standardized_wave_data):
+    # ECG - 500 Hz, mainly Lead 2 data
     def total_variation_ft(wave_data, window_size):
         diff = np.abs(np.diff(wave_data))
         return convolve(
