@@ -1,5 +1,11 @@
-from torch.fft import rfft, irfft
+#! /usr/bin/python3
+# -*- coding: utf-8 -*-
+"""docstring summary
+
+"""
+
 import torch
+from torch.fft import rfft, irfft
 
 
 def dct(x, type=2):
@@ -41,8 +47,9 @@ if __name__ == '__main__':
     dummy_waves = torch.rand(3, 5, 1024)
     recon1 = idct(dct(dummy_waves, type=1), type=1)
     recon2 = idct(dct(dummy_waves, type=2), type=2)
-    print('error :',
-          max(
-              torch.max(torch.abs(recon1 - dummy_waves)),
-              torch.max(torch.abs(recon2 - dummy_waves))
-          ))
+    max_error = max(
+        torch.max(torch.abs(recon1 - dummy_waves)),
+        torch.max(torch.abs(recon2 - dummy_waves))
+    )
+    assert max_error < 1e-5
+    print('error :', max_error)

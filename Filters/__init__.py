@@ -3,4 +3,4 @@
 """docstring summary
 
 """
-from .dct import dct, idct
+from .filters import GaussianFilter1D, MedianFilter1D

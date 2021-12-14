@@ -1,6 +1,12 @@
+#! /usr/bin/python3
+# -*- coding: utf-8 -*-
+"""docstring summary
+
+"""
+
 import numpy as np
-from scipy.signal import convolve, cwt, peak_widths, ricker, find_peaks, medfilt
 from scipy.ndimage import gaussian_filter1d
+from scipy.signal import convolve, cwt, peak_widths, ricker, find_peaks, medfilt
 
 
 def find_r(standardized_wave_data):
