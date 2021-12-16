@@ -17,13 +17,15 @@ class EcgPreprocess(nn.Module):
     Book by Rajendra Acharya U
     '''
 
-    def __init__(self, hz=500):
+    def __init__(self, hz=500, chunk_size=16, middle_device='cpu', output_device='cpu'):
         super(EcgPreprocess, self).__init__()
 
         self.param1 = round((hz / 5 - 1) / 2) * 2 + 1
         self.param2 = round(((hz * 3 / 5) - 1) / 2) * 2 + 1
-        self.MF1 = MedianFilter1D(self.param1)
-        self.MF2 = MedianFilter1D(self.param2)
+        self.MF1 = MedianFilter1D(self.param1, chunk_size=chunk_size, middle_device=middle_device,
+                                  output_device=output_device)
+        self.MF2 = MedianFilter1D(self.param2, chunk_size=chunk_size, middle_device=middle_device,
+                                  output_device=output_device)
 
     def forward(self, x):
         y = self.MF2(self.MF1(x))

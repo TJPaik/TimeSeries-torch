@@ -38,12 +38,18 @@ class GaussianFilter1D(nn.Module):
 
 
 class MedianFilter1D(nn.Module):
-    def __init__(self, kernel_size: int, padding_mode='replicate'):
+    def __init__(self, kernel_size: int, padding_mode='replicate', chunk_size: int = None, middle_device='cpu',
+                 output_device='cpu'):
         super(MedianFilter1D, self).__init__()
 
         assert kernel_size % 2 and kernel_size > 0
         self.kernel_size = kernel_size
         self.Unfold = nn.Unfold(kernel_size=(1, kernel_size))
+        if chunk_size is not None:
+            assert chunk_size > 0
+        self.chunk_size = chunk_size
+        self.middle_device = middle_device
+        self.output_device = output_device
         if padding_mode == 'replicate':
             self.Padding = nn.ReplicationPad1d(padding=(kernel_size - 1) // 2)
         elif padding_mode == 'reflect':
@@ -54,13 +60,32 @@ class MedianFilter1D(nn.Module):
             raise NotImplementedError()
 
     def forward(self, x):
-        unfolded = self.Unfold(
-            self.Padding(
-                x
-            )[:, None, ...]
-        ).view(len(x), self.kernel_size, x.shape[1], x.shape[2])
-        median_unfolded = torch.median(unfolded, 1)[0]
-        return median_unfolded
+        if self.chunk_size is None:
+            return torch.median(self.Unfold(
+                self.Padding(
+                    x.to(self.middle_device)
+                )[:, None, ...]
+            ).view(len(x), self.kernel_size, x.shape[1], x.shape[2]), 1)[0].to(self.output_device)
+        else:
+            tmp = []
+            i = 0
+            for _ in range(len(x) // self.chunk_size):
+                tmp.append(
+                    torch.median(self.Unfold(
+                        self.Padding(
+                            x[i * self.chunk_size:(i + 1) * self.chunk_size].to(self.middle_device)
+                        )[:, None, ...]
+                    ).view(-1, self.kernel_size, x.shape[1], x.shape[2]), 1)[0].to(self.output_device)
+                )
+                i += 1
+            tmp.append(
+                torch.median(self.Unfold(
+                    self.Padding(
+                        x[i * self.chunk_size:len(x)].to(self.middle_device)
+                    )[:, None, ...]
+                ).view(-1, self.kernel_size, x.shape[1], x.shape[2]), 1)[0].to(self.output_device)
+            )
+            return torch.cat(tmp)
 
 
 if __name__ == '__main__':
@@ -78,7 +103,7 @@ if __name__ == '__main__':
         electrocardiogram()[18000:20000]
     ]])).float()  # 360 Hz
     print('ECG input shape :', ECG_input.shape)
-    MF = MedianFilter1D(301)
+    MF = MedianFilter1D(301, chunk_size=1)
     GF = GaussianFilter1D(4, 2000)
     MF_output = MF(ECG_input)
     GF_output = GF(ECG_input)
