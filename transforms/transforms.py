@@ -25,7 +25,6 @@ def random_crop(x, size):
     # x.shape : (n_channel, n_time_stamps)
     assert x.shape[1] >= size
     st_pt = get_random_integer(x.shape[1] - size + 1)
-    print(st_pt)
     return x[:, st_pt:st_pt + size]
 
 
@@ -84,9 +83,10 @@ class GaussianFilter1D(nn.Module):
         self.P = Normal(torch.tensor([0]), torch.tensor([sigma]))
         kernel_length = int(truncate * sigma + 0.5)
         weight = self.P.log_prob(torch.arange(-kernel_length, kernel_length + 1)).exp()
-        self.conv = nn.Conv1d(1, 1, kernel_size=len(weight), bias=False, padding=kernel_length, padding_mode=mode)
+        self.conv = nn.Conv1d(1, 1, kernel_size=len(weight), bias=False, padding=kernel_length, padding_mode=mode,
+                              dtype=torch.float)
         self.conv.weight = nn.Parameter(
-            weight[None, None, :] / torch.sum(weight)
+            (weight[None, None, :] / torch.sum(weight)).float()
         )
         self.conv.requires_grad_(False)
 
@@ -104,7 +104,8 @@ class Resize(nn.Module):
     def forward(self, x):
         # x.shape : (n_channel, n_time_stamps)
         return F.interpolate(
-            x[None, ...], size=self.size, mode=self.mode, align_corners=None, recompute_scale_factor=None
+            x[None, ...], size=self.size, mode=self.mode, align_corners=False
+            # x[None, ...], size = self.size, mode = self.mode, align_corners = False, recompute_scale_factor = None
         )[0]
 
     def __repr__(self):
@@ -217,9 +218,28 @@ class PowerlineNoise(nn.Module):
 
 
 class BaselineWander(nn.Module):
-    def __init__(self):
+    def __init__(self, random=True):
         super(BaselineWander, self).__init__()
         self.baseline = Baseline()
+        self.random = random
 
     def forward(self, x):
-        return x - (torch.rand(1, ).item() * self.baseline(x))
+        # x.shape : (n_channel, n_time_stamps)
+        if self.random:
+            return x - (torch.rand(1, ).item() * self.baseline(x))
+        else:
+            return x - self.baseline(x)
+
+
+class RandomTF(nn.Module):
+    def __init__(self, transform, p=0.5):
+        super(RandomTF, self).__init__()
+        self.transform = transform
+        self.p = p
+
+    def forward(self, x):
+        # x.shape : (n_channel, n_time_stamps)
+        if torch.rand(1, ).item() < self.p:
+            return self.transform(x)
+        else:
+            return x
